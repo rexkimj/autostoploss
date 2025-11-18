@@ -17,6 +17,7 @@ Bybit 선물 거래에서 포지션 진입 시 자동으로 스탑로스를 설�
   - 새로운 포지션 자동 감지
   - 설정 가능한 체크 간격
   - 중복 처리 방지
+  - 특정 심볼만 감시 가능 (선택적)
 
 ## 설치
 
@@ -47,6 +48,10 @@ BYBIT_API_KEY=your_actual_api_key
 BYBIT_API_SECRET=your_actual_api_secret
 USE_TESTNET=true  # 실거래는 false
 CHECK_INTERVAL=5
+
+# 특정 심볼만 감시 (옵션)
+# 설정하지 않으면 모든 포지션을 감시합니다
+# WATCH_SYMBOLS=BTCUSDT,ETHUSDT,SOLUSDT
 ```
 
 ## 사용 방법
@@ -60,12 +65,15 @@ python main.py
 
 ### 실행 예시
 
+#### 모든 심볼 감시 (기본)
+
 ```
 🚀 Bybit 자동 스탑로스 봇 시작
 ⚠️  테스트넷 모드로 실행 중
 ⏰ 포지션 체크 간격: 5초
+👁️  감시 심볼: 모든 심볼
 
-📍 [2025-01-15 14:30:00] 활성 포지션: 1개
+📍 [2025-01-15 14:30:00] 활성 포지션: 1개 (감시 대상: 1개)
 
 🎯 새 포지션 감지: BTCUSDT
    방향: 롱(Long)
@@ -94,6 +102,31 @@ datetime          open      high       low     close     volume
 
 ✅ 스탑로스 설정: BTCUSDT SELL @ 44700.00
 ✅ BTCUSDT 스탑로스 설정 완료!
+```
+
+#### 특정 심볼만 감시
+
+`.env` 파일에서 `WATCH_SYMBOLS` 설정:
+```env
+WATCH_SYMBOLS=BTCUSDT,ETHUSDT
+```
+
+실행 결과:
+```
+🚀 Bybit 자동 스탑로스 봇 시작
+⚠️  테스트넷 모드로 실행 중
+⏰ 포지션 체크 간격: 5초
+👁️  감시 심볼: BTCUSDT, ETHUSDT
+
+📍 [2025-01-15 14:30:00] 활성 포지션: 3개 (감시 대상: 2개)
+
+🎯 새 포지션 감지: BTCUSDT
+   ...
+
+🎯 새 포지션 감지: ETHUSDT
+   ...
+
+# SOLUSDT 포지션은 감시 대상이 아니므로 무시됨
 ```
 
 ## 프로젝트 구조

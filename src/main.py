@@ -98,16 +98,49 @@ def process_position(exchange, position):
         print(f"❌ {symbol} 스탑로스 설정 실패\n")
 
 
-def monitor_positions(exchange, check_interval):
+def is_symbol_watched(symbol, watch_symbols):
+    """
+    심볼이 감시 목록에 있는지 확인
+
+    Args:
+        symbol: 체크할 심볼 (예: 'BTCUSDT')
+        watch_symbols: 감시 심볼 리스트 (None이면 모든 심볼 감시)
+
+    Returns:
+        bool: 감시 대상이면 True
+    """
+    if watch_symbols is None:
+        return True  # 설정이 없으면 모든 심볼 감시
+
+    # BTCUSDT, BTC/USDT:USDT 등 다양한 형식 처리
+    symbol_clean = symbol.replace('/', '').replace(':', '')
+
+    for watch_symbol in watch_symbols:
+        watch_clean = watch_symbol.replace('/', '').replace(':', '')
+        if symbol_clean == watch_clean:
+            return True
+
+    return False
+
+
+def monitor_positions(exchange, check_interval, watch_symbols=None):
     """
     포지션 모니터링 루프
 
     Args:
         exchange: CCXT exchange 객체
         check_interval: 체크 간격 (초)
+        watch_symbols: 감시할 심볼 리스트 (None이면 모든 심볼)
     """
     print("🚀 Bybit 자동 스탑로스 봇 시작")
-    print(f"⏰ 포지션 체크 간격: {check_interval}초\n")
+    print(f"⏰ 포지션 체크 간격: {check_interval}초")
+
+    if watch_symbols:
+        print(f"👁️  감시 심볼: {', '.join(watch_symbols)}")
+    else:
+        print(f"👁️  감시 심볼: 모든 심볼")
+
+    print()
 
     while True:
         try:
@@ -115,11 +148,19 @@ def monitor_positions(exchange, check_interval):
             positions = get_positions(exchange)
 
             if positions:
-                print(f"\n📍 [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] "
-                      f"활성 포지션: {len(positions)}개")
+                # 감시 대상 심볼만 필터링
+                filtered_positions = [
+                    pos for pos in positions
+                    if is_symbol_watched(pos['symbol'], watch_symbols)
+                ]
 
-                for position in positions:
-                    process_position(exchange, position)
+                if filtered_positions:
+                    print(f"\n📍 [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] "
+                          f"활성 포지션: {len(positions)}개 "
+                          f"(감시 대상: {len(filtered_positions)}개)")
+
+                    for position in filtered_positions:
+                        process_position(exchange, position)
             else:
                 # 포지션이 없으면 추적 목록 초기화
                 if processed_positions:
@@ -137,6 +178,24 @@ def monitor_positions(exchange, check_interval):
             time.sleep(check_interval)
 
 
+def parse_watch_symbols():
+    """
+    환경 변수에서 감시 심볼 리스트 파싱
+
+    Returns:
+        list or None: 감시 심볼 리스트 (설정 없으면 None)
+    """
+    watch_symbols_str = os.getenv('WATCH_SYMBOLS', '').strip()
+
+    if not watch_symbols_str:
+        return None
+
+    # 쉼표로 구분된 심볼 파싱
+    symbols = [s.strip() for s in watch_symbols_str.split(',') if s.strip()]
+
+    return symbols if symbols else None
+
+
 def main():
     """메인 함수"""
     # Bybit 클라이언트 생성
@@ -145,8 +204,11 @@ def main():
     # 체크 간격 설정
     check_interval = int(os.getenv('CHECK_INTERVAL', '5'))
 
+    # 감시 심볼 설정
+    watch_symbols = parse_watch_symbols()
+
     # 모니터링 시작
-    monitor_positions(exchange, check_interval)
+    monitor_positions(exchange, check_interval, watch_symbols)
 
 
 if __name__ == '__main__':
